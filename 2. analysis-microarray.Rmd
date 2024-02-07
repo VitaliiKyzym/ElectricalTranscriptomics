@@ -1,0 +1,111 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code.
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*.
+
+```{r}
+
+library(readxl)
+library(limma)
+
+expression_file<-read_excel("expression_file_microarray.xlsx")
+design_table<-read_excel("design_file_microarray.xlsx")
+
+design_table_v = unlist(design_table['Target'])
+design_table_vector = as.vector(design_table_v)
+
+group_list <- factor(c(design_table_vector))
+group_list <- relevel(group_list , "NP")
+design <- model.matrix(~group_list)
+```
+
+```{r}
+gene_ids <- expression_file['ID_REF']
+
+expression_file_df = data.frame(expression_file)
+
+num_col = ncol(expression_file_df)
+expression_file_dfx <- expression_file_df[, c(2:num_col)]
+
+rownames(expression_file_dfx) = as.vector(unlist(gene_ids))
+```
+
+```{r}
+design_contrast <- model.matrix(~ group_list - 1)
+
+colnames(design_contrast) <- levels(group_list)
+rownames(design_contrast) <- colnames(expression_file_dfx)
+
+#contrast.matrix <- makeContrasts("NF-DCM", levels = design_contrast)
+
+#colnames(design) <- levels(group_list)
+colnames(design) <- c("NP", "P")
+rownames(design) <- colnames(expression_file_dfx) 
+```
+
+```{r}
+design
+```
+
+```{r}
+
+#exp_log <- log2(expression_file_dfx+1)
+
+fit <- lmFit(expression_file_dfx, design)
+fit <- eBayes(fit)
+DEGs <- topTable(fit, coef=2,n=Inf)
+```
+
+```{r}
+DEGs
+```
+
+```{r}
+library(writexl)
+
+#DEGs <- cbind("EnsemblGeneID"=rownames(topTable(fit)), topTable(fit))
+
+full <- cbind("ID_REF"=rownames(DEGs), DEGs)
+
+write_xlsx(full, 'deg_microarray.xlsx')
+```
+
+```{r}
+
+fit2 <- treat(fit,lfc=0.1)
+topTreat(fit2,coef=2)
+
+# Volcano plot
+volcanoplot(fit, coef=2,highlight=2)
+
+plotMD(fit,column=2)
+```
+
+```{r}
+
+
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+DEGs['logFC']
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
